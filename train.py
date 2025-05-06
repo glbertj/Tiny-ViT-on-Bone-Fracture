@@ -219,29 +219,14 @@ def train_and_evaluate(folds=5):
             pos_weight = None
         
         # Initialize model and optimizer
-        model = get_model(pretrained=True, dropout_rate=0.2, freeze_backbone=True)
+        model = get_model(pretrained=True, dropout_rate=0.2)
         criterion = get_loss_fn(pos_weight=pos_weight)
         
-        # Phase 1: Train only the classifier head
-        logger.info("Phase 1: Training classifier head only")
+        # Train full model directly (no freezing/unfreezing phases)
+        logger.info("Training all layers of the model")
         optimizer = optim.AdamW(
-            filter(lambda p: p.requires_grad, model.parameters()),
+            model.parameters(),
             lr=LEARNING_RATE,
-            weight_decay=WEIGHT_DECAY
-        )
-        
-        best_model_state, best_val_metrics = train_fold(
-            model, train_loader, val_loader, optimizer, criterion, fold, logger
-        )
-        
-        # Phase 2: Fine-tune all layers
-        logger.info("Phase 2: Fine-tuning all layers")
-        model.load_state_dict(best_model_state)
-        model.unfreeze_layers()  # Unfreeze the backbone
-        
-        optimizer = optim.AdamW(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=LEARNING_RATE/10,
             weight_decay=WEIGHT_DECAY
         )
         
@@ -352,7 +337,7 @@ def evaluate_on_test(model_paths):
     test_loader, test_df = get_test_loader()
     
     # Initialize model
-    model = get_model(pretrained=False)
+    model = get_model(pretrained=False, dropout_rate=0.2)
     criterion = nn.BCEWithLogitsLoss()
     
     # Initialize lists to store predictions and labels
